@@ -91,10 +91,12 @@ jobs:
 
     steps:
       - name: Set image name
-        shell: pwsh
+        shell: powershell
         run: |
           $imageName = "ghcr.io/${{ github.repository }}".ToLowerInvariant()
-          "IMAGE_NAME=$imageName" >> $env:GITHUB_ENV
+          $line = "IMAGE_NAME=$imageName" + [Environment]::NewLine
+          $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false
+          [System.IO.File]::AppendAllText($env:GITHUB_ENV, $line, $utf8)
 
       - name: Login to GHCR
         uses: docker/login-action@v3

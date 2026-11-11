@@ -82,14 +82,14 @@ jobs:
 
 
   # JOB 3: DEPLOY
+
   deploy:
     needs: build-and-push
-
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
     runs-on: [self-hosted, Windows, X64]
 
     steps:
+      # STEP 1: SET IMAGE NAME
       - name: Set image name
         shell: powershell
         run: |
@@ -98,6 +98,7 @@ jobs:
           $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false
           [System.IO.File]::AppendAllText($env:GITHUB_ENV, $line, $utf8)
 
+      # STEP 2: LOGIN TO GHCR
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -105,8 +106,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # STEP 3: DEPLOY CONTAINER
       - name: Deploy container
-        shell: pwsh
+        shell: powershell
         run: |
           $image = "$($env:IMAGE_NAME):latest"
 
@@ -132,8 +134,9 @@ jobs:
             throw "Gagal menjalankan container baru."
           }
 
+      # STEP 4: HEALTH CHECK
       - name: Health check
-        shell: pwsh
+        shell: powershell
         run: |
           $url = "http://localhost:${{ secrets.APP_PORT }}"
           $healthy = $false

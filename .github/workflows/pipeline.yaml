@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lowercase Repository Name
-        id: repo_name
+        shell: bash
         run: |
           echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -76,6 +76,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Lowercase Repository Name
+        shell: bash
         run: |
           echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -87,6 +88,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy container
+        shell: bash
         run: |
           docker stop web-app || true
           docker rm web-app || true
@@ -94,6 +96,7 @@ jobs:
           docker run -d --name web-app -p ${{ secrets.APP_PORT }}:80 ghcr.io/${{ env.IMAGE_NAME }}:latest
 
       - name: Health check
+        shell: bash
         run: |
           sleep 3
           curl -f http://localhost:${{ secrets.APP_PORT }} || exit 1

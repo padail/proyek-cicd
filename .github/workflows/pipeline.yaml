@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Lowercase Repository Name
-        shell: bash
+        id: repo_name
         run: |
           echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -70,16 +70,21 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+
   deploy:
     needs: build-and-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: self-hosted
+
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Lowercase Repository Name
-        shell: powershell
         run: |
-          $repoLower = "${{ github.repository }}".ToLower()
-          Add-Content -Path $env:GITHUB_ENV -Value "IMAGE_NAME=$repoLower"
+          IMAGE_NAME=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -89,20 +94,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy container
-        shell: powershell
+        env:
+          APP_PORT: ${{ secrets.APP_PORT }}
         run: |
-          docker stop web-app 2>$null
-          docker rm web-app 2>$null
-          docker pull ghcr.io/$env:IMAGE_NAME`:latest
-          docker run -d --name web-app -p ${{ secrets.APP_PORT }}:80 ghcr.io/$env:IMAGE_NAME`:latest
+          docker rm -f web-app 2>/dev/null || true
+          docker pull "ghcr.io/${IMAGE_NAME}:latest"
+          docker run -d --name web-app -p "${APP_PORT}:80" "ghcr.io/${IMAGE_NAME}:latest"
 
       - name: Health check
-        shell: powershell
+        env:
+          APP_PORT: ${{ secrets.APP_PORT }}
         run: |
-          Start-Sleep -Seconds 3
-          try {
-            $response = Invoke-WebRequest -Uri "http://localhost:${{ secrets.APP_PORT }}" -UseBasicParsing
-            if ($response.StatusCode -ne 200) { exit 1 }
-          } catch {
-            exit 1
-          }
+          sleep 3
+          curl -f "http://localhost:${APP_PORT}" || exit 1
